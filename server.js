@@ -6,6 +6,10 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
+app.get('/',(req,res)=>{
+  res.send("SERVER WORKING");
+})
+
 io.on("connection", (s) => {
   console.log("New Connection");
   s.emit("message", "Welcome to liveChat");
