@@ -1,22 +1,54 @@
 const express = require("express");
 const http = require("http");
 const socketio = require("socket.io");
+const btoa = require("btoa");
+const cors = require("cors");
 
 const app = express();
+app.use(express.json());
+app.use(cors());
 const server = http.createServer(app);
 const io = socketio(server);
 
-app.get('/',(req,res)=>{
+const rooms = { PHP: "php", JAVASCRIPT: "javascript" };
+const users = { php: [], javascript: [] };
+
+app.get("/", (req, res) => {
   res.send("SERVER WORKING");
-})
+});
+
+app.post("/newJoin", (req, res) => {
+  console.log(req.body);
+  res.send(
+    JSON.stringify({ key: btoa(req.body.uname + ":" + req.body.rName) })
+  );
+});
 
 io.on("connection", (s) => {
-  console.log("New Connection");
-  s.emit("message", "Welcome to liveChat");
+  // Tell users new joined
+  if (s.handshake.query.room == rooms.PHP) {
+    if (!users.php.includes(s.handshake.query.user)) {
+      users.php.push(s.handshake.query.user);
+    }
+  } else if (s.handshake.query.room == rooms.JAVASCRIPT) {
+    if (!users.javascript.includes(s.handshake.query.user)) {
+      users.javascript.push(s.handshake.query.user);
+    }
+  }
+  io.emit("message", {
+    user: s.handshake.query.user,
+    room: s.handshake.query.room,
+    currentUsers: users,
+  });
 
-  s.broadcast.emit("message", "A user joined the chat");
+  // When a message is received
+  io.on("roomMessage", (data) => {
+    console.log(data);
+    io.emit("roomMessage", data);
+  });
 
-  s.on("disconnect", () => {
+  // When someone leaves
+  io.on("disconnect", () => {
     io.emit("message", "A user left");
   });
 });
